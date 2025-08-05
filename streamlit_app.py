@@ -1,107 +1,130 @@
 import streamlit as st
-import json
-from utils.calculations import (
-    compute_revenue,
-    compute_shift_cost,
-    compute_lost_revenue_gap,
-    annualize
+import pandas as pd
+
+# -----------------------------
+# Default Benchmark Data
+# -----------------------------
+SPECIALTIES = {
+    "General Surgery": {"direct": 675, "downstream": 1500},
+    "Orthopedic Surgery": {"direct": 850, "downstream": 2200},
+    "Neurosurgery": {"direct": 1000, "downstream": 2500},
+    "Cardiovascular": {"direct": 1200, "downstream": 2800},
+    "Urology": {"direct": 600, "downstream": 1200},
+    "ENT": {"direct": 500, "downstream": 1000},
+    "Trauma Surgery": {"direct": 700, "downstream": 1600},
+}
+
+# -----------------------------
+# Helper Functions
+# -----------------------------
+def compute_revenue(cases, direct_per_case, downstreams):
+    direct = cases * direct_per_case
+    downstream = sum([cases * ds["conversion_rate"] / 100 * ds["revenue_per_case"] for ds in downstreams])
+    return direct, downstream, direct + downstream
+
+def annualize(amount_per_shift, shifts_per_year):
+    return amount_per_shift * shifts_per_year
+
+# -----------------------------
+# Streamlit UI
+# -----------------------------
+st.set_page_config(page_title="Surgery ROI Calculator", layout="centered")
+st.title("🔍 Surgery ROI & Program Impact Calculator")
+
+# Input Fields
+st.header("1. Shift & Specialty Inputs")
+specialty = st.selectbox("Select Surgical Specialty", list(SPECIALTIES.keys()))
+defaults = SPECIALTIES[specialty]
+
+cases_per_shift = st.number_input("# of Surgical Cases per Shift", min_value=0, value=4)
+direct_per_case = st.number_input("Avg Direct Revenue per Case ($)", min_value=0, value=defaults["direct"])
+
+# Downstream Revenue Breakdown
+st.subheader("Downstream Revenue")
+downstream_types = ["Imaging", "Lab", "PT", "Follow-up", "Other"]
+selected_downstreams = []
+
+for dtype in downstream_types:
+    col1, col2 = st.columns(2)
+    with col1:
+        conv = st.slider(f"{dtype} Retention %", 0, 100, 70)
+    with col2:
+        rev = st.number_input(f"{dtype} Revenue per Case ($)", min_value=0, value=defaults["downstream"] // len(downstream_types))
+    selected_downstreams.append({"type": dtype, "conversion_rate": conv, "revenue_per_case": rev})
+
+# Cost Inputs
+st.header("2. Cost Inputs")
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    cost_mode = st.radio("TMT Cost Type", ["Hourly", "Daily"])
+    hourly_rate = st.number_input("Hourly Rate ($)", value=250)
+
+with col2:
+    hours_per_shift = st.number_input("Hours per Shift", value=12)
+
+with col3:
+    travel_cost = st.number_input("Travel + Housing Cost per Day ($)", value=300)
+
+operating_costs = st.number_input("Other Operating Costs per Shift ($)", value=500)
+
+# Toggle for Transition Management Team
+st.header("3. TMT Coverage Mode")
+tmt_toggle = st.radio("Model Scenario:", ["Without TMT", "With TMT"])
+shifts_per_year = st.number_input("Estimated Annual Shifts", value=250)
+
+target_cases = st.number_input("Target Cases per Shift with TMT", value=cases_per_shift + 2)
+actual_cases = target_cases if tmt_toggle == "With TMT" else cases_per_shift
+
+total_direct_per_case = direct_per_case
+total_tmt_shift_cost = (
+    (hourly_rate * hours_per_shift if cost_mode == "Hourly" else hourly_rate) + travel_cost + operating_costs
 )
 
-# Load benchmarks
-with open("data/benchmarks.json", "r") as f:
-    benchmarks = json.load(f)
-
-st.set_page_config(page_title="Surgery ROI Calculator", layout="centered")
-st.title("🧮 Surgery ROI Calculator – Annualized View")
-
-specialty = st.selectbox("Select Surgical Specialty", list(benchmarks.keys()))
-default_direct = benchmarks[specialty]["direct_revenue_per_case"]
-
-# Target vs Actual Cases per Shift for TMT analysis
-st.subheader("📈 Case Volume Comparison")
-target_cases = st.number_input("Target Surgical Cases per Shift", min_value=0, step=1, value=10)
-actual_cases = st.number_input("Actual Surgical Cases Handled per Shift", min_value=0, step=1, value=actual_cases if "actual_cases" in locals() else 8)
-
-# Inputs: revenue & anesthesia
-direct_per_case = st.number_input("Average Direct Revenue per Case ($)", value=default_direct)
-include_anesthesia = st.checkbox("Include Anesthesia Revenue", value=False)
-anesthesia_per_case = 0
-if include_anesthesia:
-    anesthesia_per_case = st.number_input("Anesthesia Revenue per Case ($)", min_value=0, value=200)
-total_direct_per_case = direct_per_case + anesthesia_per_case
-
-# Downstream inputs
-st.subheader("📦 Downstream Revenue Sources")
-downstream_services = [
-    {"label": "Imaging (X-ray, MRI)", "default_pct": 70, "default_rev": 500},
-    {"label": "Physical Therapy", "default_pct": 50, "default_rev": 800},
-    {"label": "Follow-up Visits", "default_pct": 90, "default_rev": 200},
-    {"label": "ICU Readmissions", "default_pct": 10, "default_rev": 4000},
-]
-selected_downstreams = []
-for ds in downstream_services:
-    inc = st.checkbox(ds["label"], value=True)
-    if inc:
-        col1, col2 = st.columns(2)
-        with col1:
-            pct = st.number_input(f"{ds['label']} – % of cases", min_value=0, max_value=100,
-                                  value=ds["default_pct"], key=ds["label"]+"_pct")
-        with col2:
-            rev = st.number_input(f"{ds['label']} – Rev per case ($)", min_value=0,
-                                  value=ds["default_rev"], key=ds["label"]+"_rev")
-        selected_downstreams.append({"conversion_rate": pct, "revenue_per_case": rev})
-
-# TMT staffing cost inputs
-st.subheader("💰 Transition Management Team (TMT) Cost Inputs")
-cost_mode = st.radio("Base shift cost mode:", ["Hourly Rate", "Daily Rate"])
-if cost_mode == "Hourly Rate":
-    hourly_rate = st.number_input("Hourly Rate ($)", min_value=0, value=200)
-    shift_hours = st.number_input("Hours per Shift", min_value=0, max_value=24, value=10)
-    base_shift_cost = hourly_rate * shift_hours
-else:
-    base_shift_cost = st.number_input("Daily Rate ($)", min_value=0, value=2500)
-
-travel_cost = st.number_input("Travel Cost per Day ($)", min_value=0, value=300)
-housing_cost = st.number_input("Housing Cost per Day ($)", min_value=0, value=250)
-total_tmt_shift_cost = compute_shift_cost(base_shift_cost, travel_cost, housing_cost)
-
-# Annualization
-st.subheader("📆 Annualization Settings")
-shifts_per_year = st.number_input("Number of TMT Shifts per Year", min_value=0, value=50)
-
-# Toggle comparison
-st.subheader("🔄 TMT Coverage Mode")
-use_tmt = st.radio("Model Scenario:", ["Without TMT", "With TMT"])
-
+# -----------------------------
+# Calculations & Output
+# -----------------------------
 if st.button("Calculate Annual Program Impact"):
-    # Without TMT
-    direct_no, downstream_no, rev_no = compute_revenue(actual_cases, total_direct_per_case, selected_downstreams)
-    lost_cases = max(0, target_cases - actual_cases)
+    # Revenue & costs
+    direct_no, downstream_no, rev_no = compute_revenue(actual_cases if tmt_toggle == "Without TMT" else cases_per_shift, total_direct_per_case, selected_downstreams)
+    lost_cases = max(0, target_cases - cases_per_shift)
     lost_revenue_per_shift = lost_cases * (total_direct_per_case + sum([
         ds["conversion_rate"]/100 * ds["revenue_per_case"] for ds in selected_downstreams
     ]))
-    net_revenue_no = rev_no
 
-    # With TMT: assume extra capacity handles target_cases
     direct_tmt, downstream_tmt, rev_tmt = compute_revenue(target_cases, total_direct_per_case, selected_downstreams)
-    net_revenue_tmt = rev_tmt
-
-    # Costs
+    annual_rev_no = annualize(rev_no, shifts_per_year)
+    annual_rev_tmt = annualize(rev_tmt, shifts_per_year)
     annual_tmt_cost = annualize(total_tmt_shift_cost, shifts_per_year)
 
-    # Annual revenue comparison
-    annual_rev_no = annualize(net_revenue_no, shifts_per_year)
-    annual_rev_tmt = annualize(net_revenue_tmt, shifts_per_year)
     recovered_revenue = annual_rev_tmt - annual_rev_no
+    net_gain = recovered_revenue - annual_tmt_cost
 
     st.subheader("📊 Annual Results")
 
-    st.write(f"**Without TMT**: ${annual_rev_no:,.2f} annual revenue (lost ${annualize(lost_revenue_per_shift, shifts_per_year):,.2f})")
-    st.write(f"**With TMT**: ${annual_rev_tmt:,.2f} annual revenue")
+    lost_rev_style = "background-color:darkred; color:white; padding:2px 6px; border-radius:6px; font-weight:bold;"
+    gain_style = "background-color:green; color:white; padding:2px 6px; border-radius:6px; font-weight:bold;"
 
-    st.markdown(f"**Revenue Recovered by TMT**: <span style='color:green; font-weight:bold;'>+${recovered_revenue:,.2f}</span>", unsafe_allow_html=True)
-    st.markdown(f"**Annual TMT Cost**: <span style='color:#555;'>${annual_tmt_cost:,.2f}</span>", unsafe_allow_html=True)
+    st.markdown(
+        f"**Without TMT**: ${annual_rev_no:,.2f} annual revenue "
+        f"(<span style='{lost_rev_style}'>Lost ${annualize(lost_revenue_per_shift, shifts_per_year):,.2f}</span>)",
+        unsafe_allow_html=True
+    )
 
-    net_gain = recovered_revenue - annual_tmt_cost
-    style = "color:green;" if net_gain >= 0 else "color:darkred;"
-    st.markdown(f"**Net Gain from Program**: <span style='{style} font-size:24px; font-weight:bold;'>${net_gain:,.2f}</span>", unsafe_allow_html=True)
+    st.markdown(
+        f"**With TMT**: <span style='{gain_style}'>${annual_rev_tmt:,.2f} annual revenue</span>",
+        unsafe_allow_html=True
+    )
+
+    st.markdown(
+        f"**Revenue Recovered by TMT**: <span style='{gain_style}'>+${recovered_revenue:,.2f}</span>",
+        unsafe_allow_html=True
+    )
+
+    st.write(f"**Annual TMT Cost**: ${annual_tmt_cost:,.2f}")
+
+    style = gain_style if net_gain >= 0 else lost_rev_style
+    st.markdown(
+        f"**Net Gain from Program**: <span style='{style}'>${net_gain:,.2f}</span>",
+        unsafe_allow_html=True
+    )
