@@ -109,26 +109,40 @@ if st.button("Calculate Annual Program Impact"):
     lost_rev_style = "background-color:darkred; color:white; padding:4px 8px; border-radius:6px; font-weight:bold;"
     gain_style = "background-color:green; color:white; padding:4px 8px; border-radius:6px; font-weight:bold;"
 
-    st.markdown(
-        f"<p><strong>Without TMT</strong>: ${annual_rev_no:,.2f} annual revenue \
-        <span style='{lost_rev_style}'>Lost ${annualize(lost_revenue_per_shift, shifts_per_year):,.2f}</span></p>",
-        unsafe_allow_html=True
-    )
+    if tmt_toggle == "Without TMT":
+        st.markdown(
+            f"<p><strong>Without TMT</strong>: ${annual_rev_no:,.2f} annual revenue \
+            <span style='{lost_rev_style}'>Lost ${annualize(lost_revenue_per_shift, shifts_per_year):,.2f}</span></p>",
+            unsafe_allow_html=True
+        )
 
-    st.markdown(
-        f"<p><strong>With TMT</strong>: <span style='{gain_style}'>${annual_rev_tmt:,.2f} annual revenue</span></p>",
-        unsafe_allow_html=True
-    )
+        style = gain_style if net_gain >= 0 else lost_rev_style
+        st.markdown(
+            f"<p><strong>Net Gain from Program</strong>: <span style='{style}'>${net_gain:,.2f}</span></p>",
+            unsafe_allow_html=True
+        )
 
-    st.markdown(
-        f"<p><strong>Revenue Recovered by TMT</strong>: <span style='{gain_style}'>+${recovered_revenue:,.2f}</span></p>",
-        unsafe_allow_html=True
-    )
+    elif tmt_toggle == "With TMT":
+        st.markdown(
+            f"<p><strong>Without TMT</strong>: ${annual_rev_no:,.2f} annual revenue \
+            <span style='{lost_rev_style}'>Lost ${annualize(lost_revenue_per_shift, shifts_per_year):,.2f}</span></p>",
+            unsafe_allow_html=True
+        )
 
-    st.write(f"**Annual TMT Cost**: ${annual_tmt_cost:,.2f}")
+        st.markdown(
+            f"<p><strong>With TMT</strong>: <span style='{gain_style}'>${annual_rev_tmt:,.2f} annual revenue</span></p>",
+            unsafe_allow_html=True
+        )
 
-    style = gain_style if net_gain >= 0 else lost_rev_style
-    st.markdown(
-        f"<p><strong>Net Gain from Program</strong>: <span style='{style}'>${net_gain:,.2f}</span></p>",
-        unsafe_allow_html=True
-    )
+        st.markdown(
+            f"<p><strong>Revenue Recovered by TMT</strong>: <span style='{gain_style}'>+${recovered_revenue:,.2f}</span></p>",
+            unsafe_allow_html=True
+        )
+
+        st.write(f"**Annual TMT Cost**: ${annual_tmt_cost:,.2f}")
+
+        style = gain_style if net_gain >= 0 else lost_rev_style
+        st.markdown(
+            f"<p><strong>Net Gain from Program</strong>: <span style='{style}'>${net_gain:,.2f}</span></p>",
+            unsafe_allow_html=True
+        )
