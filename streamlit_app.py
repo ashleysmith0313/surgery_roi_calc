@@ -82,22 +82,22 @@ tmt_toggle = st.radio("Model Scenario:", ["Without TMT", "With TMT"], horizontal
 shifts_per_year = st.number_input("Estimated Annual Shifts", value=250)
 
 target_cases = st.number_input("Target Cases per Shift with TMT", value=cases_per_shift + 2)
-actual_cases = target_cases if tmt_toggle == "With TMT" else cases_per_shift
 
-total_direct_per_case = direct_per_case
+# Always use base actual cases from input
+actual_cases = cases_per_shift
 
 # -----------------------------
 # Calculations & Output
 # -----------------------------
 if st.button("Calculate Annual Program Impact"):
-    direct_actual, downstream_actual, rev_actual = compute_revenue(actual_cases, total_direct_per_case, selected_downstreams)
-    direct_target, downstream_target, rev_target = compute_revenue(target_cases, total_direct_per_case, selected_downstreams)
+    direct_actual, downstream_actual, rev_actual = compute_revenue(actual_cases, direct_per_case, selected_downstreams)
+    direct_target, downstream_target, rev_target = compute_revenue(target_cases, direct_per_case, selected_downstreams)
 
     annual_rev_actual = annualize(rev_actual, shifts_per_year)
     annual_rev_target = annualize(rev_target, shifts_per_year)
-    lost_revenue = annual_rev_target - annual_rev_actual
+    lost_revenue = max(0, annual_rev_target - annual_rev_actual)
+    recovered_revenue = max(0, annual_rev_target - annual_rev_actual)
     annual_tmt_cost = annualize(total_tmt_shift_cost, shifts_per_year)
-    recovered_revenue = annual_rev_target - annual_rev_actual
     net_gain = recovered_revenue - annual_tmt_cost
 
     st.subheader("📊 Annual Results")
@@ -111,7 +111,6 @@ if st.button("Calculate Annual Program Impact"):
             <span style='{lost_rev_style}'>Lost ${lost_revenue:,.2f}</span></p>",
             unsafe_allow_html=True
         )
-
         st.markdown(
             f"<p><strong>Net Loss from Program</strong>: <span style='{lost_rev_style}'>-${lost_revenue:,.2f}</span></p>",
             unsafe_allow_html=True
@@ -123,19 +122,15 @@ if st.button("Calculate Annual Program Impact"):
             <span style='{lost_rev_style}'>Lost ${lost_revenue:,.2f}</span></p>",
             unsafe_allow_html=True
         )
-
         st.markdown(
             f"<p><strong>With TMT</strong>: <span style='{gain_style}'>${annual_rev_target:,.2f} annual revenue</span></p>",
             unsafe_allow_html=True
         )
-
         st.markdown(
             f"<p><strong>Revenue Recovered by TMT</strong>: <span style='{gain_style}'>+${recovered_revenue:,.2f}</span></p>",
             unsafe_allow_html=True
         )
-
         st.write(f"**Annual TMT Cost**: ${annual_tmt_cost:,.2f}")
-
         style = gain_style if net_gain >= 0 else lost_rev_style
         st.markdown(
             f"<p><strong>Net Gain from Program</strong>: <span style='{style}'>${net_gain:,.2f}</span></p>",
