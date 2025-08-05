@@ -90,18 +90,14 @@ total_direct_per_case = direct_per_case
 # Calculations & Output
 # -----------------------------
 if st.button("Calculate Annual Program Impact"):
-    direct_no, downstream_no, rev_no = compute_revenue(actual_cases, total_direct_per_case, selected_downstreams)
-    lost_cases = max(0, target_cases - cases_per_shift)
-    lost_revenue_per_shift = lost_cases * (total_direct_per_case + sum([
-        ds["conversion_rate"]/100 * ds["revenue_per_case"] for ds in selected_downstreams
-    ]))
+    direct_actual, downstream_actual, rev_actual = compute_revenue(actual_cases, total_direct_per_case, selected_downstreams)
+    direct_target, downstream_target, rev_target = compute_revenue(target_cases, total_direct_per_case, selected_downstreams)
 
-    direct_tmt, downstream_tmt, rev_tmt = compute_revenue(target_cases, total_direct_per_case, selected_downstreams)
-    annual_rev_no = annualize(rev_no, shifts_per_year)
-    annual_rev_tmt = annualize(rev_tmt, shifts_per_year)
+    annual_rev_actual = annualize(rev_actual, shifts_per_year)
+    annual_rev_target = annualize(rev_target, shifts_per_year)
+    lost_revenue = annual_rev_target - annual_rev_actual
     annual_tmt_cost = annualize(total_tmt_shift_cost, shifts_per_year)
-
-    recovered_revenue = annual_rev_tmt - annual_rev_no
+    recovered_revenue = annual_rev_target - annual_rev_actual
     net_gain = recovered_revenue - annual_tmt_cost
 
     st.subheader("📊 Annual Results")
@@ -111,26 +107,25 @@ if st.button("Calculate Annual Program Impact"):
 
     if tmt_toggle == "Without TMT":
         st.markdown(
-            f"<p><strong>Without TMT</strong>: ${annual_rev_no:,.2f} annual revenue \
-            <span style='{lost_rev_style}'>Lost ${annualize(lost_revenue_per_shift, shifts_per_year):,.2f}</span></p>",
+            f"<p><strong>Without TMT</strong>: ${annual_rev_actual:,.2f} annual revenue \
+            <span style='{lost_rev_style}'>Lost ${lost_revenue:,.2f}</span></p>",
             unsafe_allow_html=True
         )
 
-        style = gain_style if net_gain >= 0 else lost_rev_style
         st.markdown(
-            f"<p><strong>Net Gain from Program</strong>: <span style='{style}'>${net_gain:,.2f}</span></p>",
+            f"<p><strong>Net Loss from Program</strong>: <span style='{lost_rev_style}'>-${lost_revenue:,.2f}</span></p>",
             unsafe_allow_html=True
         )
 
     elif tmt_toggle == "With TMT":
         st.markdown(
-            f"<p><strong>Without TMT</strong>: ${annual_rev_no:,.2f} annual revenue \
-            <span style='{lost_rev_style}'>Lost ${annualize(lost_revenue_per_shift, shifts_per_year):,.2f}</span></p>",
+            f"<p><strong>Without TMT</strong>: ${annual_rev_actual:,.2f} annual revenue \
+            <span style='{lost_rev_style}'>Lost ${lost_revenue:,.2f}</span></p>",
             unsafe_allow_html=True
         )
 
         st.markdown(
-            f"<p><strong>With TMT</strong>: <span style='{gain_style}'>${annual_rev_tmt:,.2f} annual revenue</span></p>",
+            f"<p><strong>With TMT</strong>: <span style='{gain_style}'>${annual_rev_target:,.2f} annual revenue</span></p>",
             unsafe_allow_html=True
         )
 
