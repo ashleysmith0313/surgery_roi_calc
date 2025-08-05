@@ -45,32 +45,32 @@ downstream_types = ["Imaging", "Lab", "PT", "Follow-up", "Other"]
 selected_downstreams = []
 
 for dtype in downstream_types:
-    col1, col2 = st.columns(2)
+    col1, col2 = st.columns([2, 2])
     with col1:
-        conv = st.slider(f"{dtype} Retention %", 0, 100, 70)
+        pct = st.slider(f"% of Cases Using {dtype}", 0, 100, 70)
     with col2:
         rev = st.number_input(f"{dtype} Revenue per Case ($)", min_value=0, value=defaults["downstream"] // len(downstream_types))
-    selected_downstreams.append({"type": dtype, "conversion_rate": conv, "revenue_per_case": rev})
+    selected_downstreams.append({"type": dtype, "conversion_rate": pct, "revenue_per_case": rev})
 
 # Cost Inputs
-st.header("2. Cost Inputs")
-col1, col2, col3 = st.columns(3)
+st.header("2. Transition Management Team (TMT) Cost Inputs")
+cost_col1, cost_col2, cost_col3 = st.columns(3)
 
-with col1:
-    cost_mode = st.radio("TMT Cost Type", ["Hourly", "Daily"])
+with cost_col1:
+    cost_mode = st.radio("TMT Cost Type", ["Hourly", "Daily"], horizontal=True)
     hourly_rate = st.number_input("Hourly Rate ($)", value=250)
 
-with col2:
+with cost_col2:
     hours_per_shift = st.number_input("Hours per Shift", value=12)
 
-with col3:
+with cost_col3:
     travel_cost = st.number_input("Travel + Housing Cost per Day ($)", value=300)
 
 operating_costs = st.number_input("Other Operating Costs per Shift ($)", value=500)
 
 # Toggle for Transition Management Team
 st.header("3. TMT Coverage Mode")
-tmt_toggle = st.radio("Model Scenario:", ["Without TMT", "With TMT"])
+tmt_toggle = st.radio("Model Scenario:", ["Without TMT", "With TMT"], horizontal=True)
 shifts_per_year = st.number_input("Estimated Annual Shifts", value=250)
 
 target_cases = st.number_input("Target Cases per Shift with TMT", value=cases_per_shift + 2)
@@ -85,8 +85,7 @@ total_tmt_shift_cost = (
 # Calculations & Output
 # -----------------------------
 if st.button("Calculate Annual Program Impact"):
-    # Revenue & costs
-    direct_no, downstream_no, rev_no = compute_revenue(actual_cases if tmt_toggle == "Without TMT" else cases_per_shift, total_direct_per_case, selected_downstreams)
+    direct_no, downstream_no, rev_no = compute_revenue(actual_cases, total_direct_per_case, selected_downstreams)
     lost_cases = max(0, target_cases - cases_per_shift)
     lost_revenue_per_shift = lost_cases * (total_direct_per_case + sum([
         ds["conversion_rate"]/100 * ds["revenue_per_case"] for ds in selected_downstreams
