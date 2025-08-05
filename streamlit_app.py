@@ -98,7 +98,6 @@ if st.button("Calculate Annual Program Impact"):
     lost_revenue = max(0, annual_rev_target - annual_rev_actual)
     recovered_revenue = max(0, annual_rev_target - annual_rev_actual)
     annual_tmt_cost = annualize(total_tmt_shift_cost, shifts_per_year)
-    net_gain = recovered_revenue - annual_tmt_cost
 
     st.subheader("📊 Annual Results")
 
@@ -131,8 +130,3 @@ if st.button("Calculate Annual Program Impact"):
             unsafe_allow_html=True
         )
         st.write(f"**Annual TMT Cost**: ${annual_tmt_cost:,.2f}")
-        style = gain_style if net_gain >= 0 else lost_rev_style
-        st.markdown(
-            f"<p><strong>Net Gain from Program</strong>: <span style='{style}'>${net_gain:,.2f}</span></p>",
-            unsafe_allow_html=True
-        )
