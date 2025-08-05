@@ -54,19 +54,27 @@ for dtype in downstream_types:
 
 # Cost Inputs
 st.header("2. Transition Management Team (TMT) Cost Inputs")
-cost_col1, cost_col2, cost_col3 = st.columns(3)
+cost_mode = st.radio("TMT Cost Type", ["Hourly", "Daily"], horizontal=True)
 
-with cost_col1:
-    cost_mode = st.radio("TMT Cost Type", ["Hourly", "Daily"], horizontal=True)
-    hourly_rate = st.number_input("Hourly Rate ($)", value=250)
+if cost_mode == "Hourly":
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        hourly_rate = st.number_input("Hourly Rate ($)", value=250)
+    with col2:
+        hours_per_shift = st.number_input("Hours per Shift", value=12)
+    base_shift_cost = hourly_rate * hours_per_shift
+else:
+    base_shift_cost = st.number_input("Daily Rate ($)", value=3000)
 
-with cost_col2:
-    hours_per_shift = st.number_input("Hours per Shift", value=12)
-
-with cost_col3:
-    travel_cost = st.number_input("Travel + Housing Cost per Day ($)", value=300)
+col4, col5 = st.columns(2)
+with col4:
+    travel_cost = st.number_input("Travel Cost per Day ($)", value=300)
+with col5:
+    housing_cost = st.number_input("Housing Cost per Day ($)", value=250)
 
 operating_costs = st.number_input("Other Operating Costs per Shift ($)", value=500)
+
+total_tmt_shift_cost = base_shift_cost + travel_cost + housing_cost + operating_costs
 
 # Toggle for Transition Management Team
 st.header("3. TMT Coverage Mode")
@@ -77,9 +85,6 @@ target_cases = st.number_input("Target Cases per Shift with TMT", value=cases_pe
 actual_cases = target_cases if tmt_toggle == "With TMT" else cases_per_shift
 
 total_direct_per_case = direct_per_case
-total_tmt_shift_cost = (
-    (hourly_rate * hours_per_shift if cost_mode == "Hourly" else hourly_rate) + travel_cost + operating_costs
-)
 
 # -----------------------------
 # Calculations & Output
@@ -101,22 +106,22 @@ if st.button("Calculate Annual Program Impact"):
 
     st.subheader("📊 Annual Results")
 
-    lost_rev_style = "background-color:darkred; color:white; padding:2px 6px; border-radius:6px; font-weight:bold;"
-    gain_style = "background-color:green; color:white; padding:2px 6px; border-radius:6px; font-weight:bold;"
+    lost_rev_style = "background-color:darkred; color:white; padding:4px 8px; border-radius:6px; font-weight:bold;"
+    gain_style = "background-color:green; color:white; padding:4px 8px; border-radius:6px; font-weight:bold;"
 
     st.markdown(
-        f"**Without TMT**: ${annual_rev_no:,.2f} annual revenue "
-        f"(<span style='{lost_rev_style}'>Lost ${annualize(lost_revenue_per_shift, shifts_per_year):,.2f}</span>)",
+        f"<p><strong>Without TMT</strong>: ${annual_rev_no:,.2f} annual revenue \
+        <span style='{lost_rev_style}'>Lost ${annualize(lost_revenue_per_shift, shifts_per_year):,.2f}</span></p>",
         unsafe_allow_html=True
     )
 
     st.markdown(
-        f"**With TMT**: <span style='{gain_style}'>${annual_rev_tmt:,.2f} annual revenue</span>",
+        f"<p><strong>With TMT</strong>: <span style='{gain_style}'>${annual_rev_tmt:,.2f} annual revenue</span></p>",
         unsafe_allow_html=True
     )
 
     st.markdown(
-        f"**Revenue Recovered by TMT**: <span style='{gain_style}'>+${recovered_revenue:,.2f}</span>",
+        f"<p><strong>Revenue Recovered by TMT</strong>: <span style='{gain_style}'>+${recovered_revenue:,.2f}</span></p>",
         unsafe_allow_html=True
     )
 
@@ -124,6 +129,6 @@ if st.button("Calculate Annual Program Impact"):
 
     style = gain_style if net_gain >= 0 else lost_rev_style
     st.markdown(
-        f"**Net Gain from Program**: <span style='{style}'>${net_gain:,.2f}</span>",
+        f"<p><strong>Net Gain from Program</strong>: <span style='{style}'>${net_gain:,.2f}</span></p>",
         unsafe_allow_html=True
     )
