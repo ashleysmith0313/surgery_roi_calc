@@ -1,0 +1,30 @@
+{
+  "General Surgery": {
+    "direct_revenue_per_case": 675,
+    "downstream_revenue_per_case": 1500
+  },
+  "Orthopedic Surgery": {
+    "direct_revenue_per_case": 850,
+    "downstream_revenue_per_case": 2200
+  },
+  "Neurosurgery": {
+    "direct_revenue_per_case": 1000,
+    "downstream_revenue_per_case": 2500
+  },
+  "Cardiovascular": {
+    "direct_revenue_per_case": 1200,
+    "downstream_revenue_per_case": 2800
+  },
+  "Urology": {
+    "direct_revenue_per_case": 600,
+    "downstream_revenue_per_case": 1200
+  },
+  "ENT": {
+    "direct_revenue_per_case": 500,
+    "downstream_revenue_per_case": 1000
+  },
+  "Trauma Surgery": {
+    "direct_revenue_per_case": 900,
+    "downstream_revenue_per_case": 1800
+  }
+}
